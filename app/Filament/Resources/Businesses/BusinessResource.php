@@ -28,7 +28,7 @@ class BusinessResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-building-storefront';
 
-    protected static ?string $navigationLabel = 'busie+ness';
+    protected static ?string $navigationLabel = 'Businesses';
 
     protected static ?string $modelLabel = 'Business';
 
