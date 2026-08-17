@@ -153,14 +153,14 @@ class BusinessResource extends Resource
                     ])
                     ->columns(2),
 
-                // Section::make('Additional Settings')
-                //     ->schema([
-                //         KeyValue::make('settings')
-                //             ->label('Settings')
-                //             ->keyLabel('Key')
-                //             ->valueLabel('Value')
-                //             ->columnSpanFull(),
-                //     ]),
+                Section::make('Additional Settings')
+                    ->schema([
+                        KeyValue::make('settings')
+                            ->label('Settings')
+                            ->keyLabel('Key')
+                            ->valueLabel('Value')
+                            ->columnSpanFull(),
+                    ]),
             ]);
     }
 
