@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Products;
 
 use App\Filament\Resources\Products\Pages;
 use App\Models\Product;
+use App\Models\Category;
 use BackedEnum;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\KeyValue;
@@ -24,6 +25,7 @@ use Illuminate\Support\Str;
 use App\Models\ModifierGroup;
 use Filament\Forms\Components\Placeholder;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Illuminate\Support\HtmlString;
 
 class ProductResource extends Resource
@@ -52,13 +54,28 @@ class ProductResource extends Resource
                             ->relationship('business', 'name')
                             ->searchable()
                             ->preload()
+                            ->live()
+                            ->afterStateUpdated(fn (Set $set) => $set('category_id', null))
                             ->required(),
 
                         Select::make('category_id')
                             ->label('Category')
-                            ->relationship('category', 'name')
+                            ->options(fn (Get $get): array => Category::query()
+                                ->with('parent')
+                                ->where('business_id', $get('business_id'))
+                                ->where('is_active', true)
+                                ->orderBy('sort_order')
+                                ->orderBy('name')
+                                ->get()
+                                ->mapWithKeys(fn (Category $category): array => [
+                                    $category->id => $category->parent
+                                        ? $category->parent->name.' → '.$category->name
+                                        : $category->name,
+                                ])
+                                ->all())
                             ->searchable()
                             ->preload()
+                            ->helperText('A product may belong directly to a main category or to one of its subcategories.')
                             ->required(),
 
                         TextInput::make('name')
