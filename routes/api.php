@@ -63,6 +63,27 @@ Route::prefix('v1')->group(function () {
         CatalogController::class,
         'product',
     ]);
+
+    /*
+    | Mobile body-based compatibility routes
+    |----------------------------------------
+    | These POST routes accept IDs in a JSON body for the Flutter client.
+    | The existing REST-style GET routes above remain supported.
+    */
+    Route::post('/catalog/categories', [
+        CatalogController::class,
+        'categoriesFromBody',
+    ]);
+
+    Route::post('/catalog/products', [
+        CatalogController::class,
+        'productsFromBody',
+    ]);
+
+    Route::post('/catalog/product-details', [
+        CatalogController::class,
+        'productFromBody',
+    ]);
     Route::get('/banners/top', [
     \App\Http\Controllers\Api\V1\CatalogController::class,
     'topBanners',
