@@ -91,14 +91,25 @@ class CatalogController extends Controller
 
     public function business(Business $business): JsonResponse
     {
+        $activeProducts = fn ($query) => $query
+            ->where('is_active', true)
+            ->where('is_available', true)
+            ->orderBy('sort_order');
+
         $business->load([
             'businessType',
             'branches' => fn ($query) =>
                 $query->where('is_active', true)
                     ->orderBy('sort_order'),
             'categories' => fn ($query) =>
-                $query->where('is_active', true)
+                $query->whereNull('parent_id')
+                    ->where('is_active', true)
                     ->orderBy('sort_order'),
+            'categories.products' => $activeProducts,
+            'categories.children' => fn ($query) => $query
+                ->where('is_active', true)
+                ->orderBy('sort_order'),
+            'categories.children.products' => $activeProducts,
         ]);
 
         return response()->json([
@@ -108,10 +119,23 @@ class CatalogController extends Controller
 
     public function categories(Business $business): JsonResponse
     {
+        $activeProducts = fn ($query) => $query
+            ->where('is_active', true)
+            ->where('is_available', true)
+            ->orderBy('sort_order');
+
         return response()->json([
             'data' => $business->categories()
+                ->whereNull('parent_id')
                 ->where('is_active', true)
                 ->orderBy('sort_order')
+                ->with([
+                    'products' => $activeProducts,
+                    'children' => fn ($query) => $query
+                        ->where('is_active', true)
+                        ->orderBy('sort_order'),
+                    'children.products' => $activeProducts,
+                ])
                 ->get(),
         ]);
     }
@@ -131,10 +155,19 @@ class CatalogController extends Controller
             ->orderBy('sort_order');
 
         if ($request->filled('category_id')) {
-            $query->where(
-                'category_id',
-                $request->integer('category_id')
-            );
+            $category = $business->categories()
+                ->findOrFail($request->integer('category_id'));
+
+            $categoryIds = [$category->id];
+
+            if ($category->parent_id === null) {
+                $categoryIds = array_merge(
+                    $categoryIds,
+                    $category->children()->pluck('id')->all()
+                );
+            }
+
+            $query->whereIn('category_id', $categoryIds);
         }
 
         return response()->json([
