@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Validation\ValidationException;
 
 class Product extends Model
 {
@@ -53,7 +54,8 @@ class Product extends Model
     {
         return $this->belongsTo(Category::class);
     }
-public function modifierGroups(): BelongsToMany
+
+    public function modifierGroups(): BelongsToMany
     {
         return $this->belongsToMany(
             ModifierGroup::class,
@@ -63,7 +65,20 @@ public function modifierGroups(): BelongsToMany
         ]);
     }
     public function cartItems(): HasMany
-{
-    return $this->hasMany(CartItem::class);
-}
+    {
+        return $this->hasMany(CartItem::class);
+    }
+
+    protected static function booted(): void
+    {
+        static::saving(function (Product $product): void {
+            $category = Category::query()->find($product->category_id);
+
+            if (! $category || $category->business_id !== $product->business_id) {
+                throw ValidationException::withMessages([
+                    'category_id' => 'The category must belong to the selected merchant.',
+                ]);
+            }
+        });
+    }
 }
