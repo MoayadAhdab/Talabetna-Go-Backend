@@ -46,6 +46,48 @@ class CatalogHierarchyTest extends TestCase
         $this->product($firstMerchant, $foreignCategory, 'Invalid Product');
     }
 
+    public function test_flutter_can_send_catalog_ids_in_the_request_body(): void
+    {
+        $merchant = $this->merchant('body-client-merchant');
+        $main = $this->category($merchant, 'Meals');
+        $sub = $this->category($merchant, 'Burgers', $main);
+        $product = $this->product($merchant, $sub, 'Body Client Burger');
+
+        $this->postJson('/api/v1/catalog/categories', [
+            'business_id' => $merchant->id,
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.0.children.0.id', $sub->id);
+
+        $this->postJson('/api/v1/catalog/products', [
+            'business_id' => $merchant->id,
+            'category_id' => $main->id,
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.data.0.id', $product->id);
+
+        $this->postJson('/api/v1/catalog/product-details', [
+            'product_id' => $product->id,
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.id', $product->id);
+    }
+
+    public function test_body_based_catalog_routes_validate_required_ids(): void
+    {
+        $this->postJson('/api/v1/catalog/categories')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('business_id');
+
+        $this->postJson('/api/v1/catalog/products')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('business_id');
+
+        $this->postJson('/api/v1/catalog/product-details')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('product_id');
+    }
+
     private function merchant(string $slug): Business
     {
         $type = BusinessType::query()->firstOrCreate(
