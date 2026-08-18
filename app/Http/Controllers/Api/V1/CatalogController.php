@@ -140,6 +140,26 @@ class CatalogController extends Controller
         ]);
     }
 
+    /**
+     * Mobile compatibility endpoint.
+     *
+     * POST /api/v1/catalog/categories
+     * Body: { "business_id": 1 }
+     *
+     * The original GET endpoint remains available. This method exists for
+     * Flutter clients whose networking layer sends identifiers in the body.
+     */
+    public function categoriesFromBody(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'business_id' => ['required', 'integer', 'exists:businesses,id'],
+        ]);
+
+        return $this->categories(
+            Business::query()->findOrFail($validated['business_id'])
+        );
+    }
+
     public function products(
         Request $request,
         Business $business
@@ -178,6 +198,31 @@ class CatalogController extends Controller
                 )
             ),
         ]);
+    }
+
+    /**
+     * Mobile compatibility endpoint.
+     *
+     * POST /api/v1/catalog/products
+     * Body: { "business_id": 1, "category_id": 3 }
+     */
+    public function productsFromBody(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'business_id' => ['required', 'integer', 'exists:businesses,id'],
+            'category_id' => ['nullable', 'integer', 'exists:categories,id'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+
+        $catalogRequest = Request::create('/', 'GET', array_filter([
+            'category_id' => $validated['category_id'] ?? null,
+            'per_page' => $validated['per_page'] ?? null,
+        ], fn ($value) => $value !== null));
+
+        return $this->products(
+            $catalogRequest,
+            Business::query()->findOrFail($validated['business_id'])
+        );
     }
     public function popularMerchants(): JsonResponse
 {
@@ -375,5 +420,22 @@ public function featuredMerchants(): JsonResponse
         return response()->json([
             'data' => $product,
         ]);
+    }
+
+    /**
+     * Mobile compatibility endpoint.
+     *
+     * POST /api/v1/catalog/product-details
+     * Body: { "product_id": 7 }
+     */
+    public function productFromBody(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'product_id' => ['required', 'integer', 'exists:products,id'],
+        ]);
+
+        return $this->product(
+            Product::query()->findOrFail($validated['product_id'])
+        );
     }
 }
