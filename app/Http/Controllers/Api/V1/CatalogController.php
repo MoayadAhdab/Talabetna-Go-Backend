@@ -15,11 +15,36 @@ class CatalogController extends Controller
 {
     public function businessTypes(): JsonResponse
     {
+        $types = BusinessType::query()
+            ->where('status', true)
+            ->orderBy('sort_order')
+            ->get()
+            ->map(fn (BusinessType $type) => [
+                'id' => $type->id,
+                'name' => (string) $type->name,
+                'slug' => (string) $type->slug,
+                'description' => (string) ($type->description ?? ''),
+                'icon' => (string) ($type->icon ?? 'heroicon-o-building-storefront'),
+                'image' => $this->imageUrl(
+                    $type->image,
+                    $type->slug === 'coffee'
+                        ? 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=900&q=85'
+                        : 'https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=900&q=85'
+                ),
+                'status' => (bool) $type->status,
+                'sort_order' => (int) $type->sort_order,
+                'settings' => [
+                    'supports_pickup' => 'true',
+                    'supports_delivery' => 'true',
+                    'supports_scheduled_orders' => 'true',
+                ],
+                'created_at' => $type->created_at?->toIso8601String() ?? now()->toIso8601String(),
+                'updated_at' => $type->updated_at?->toIso8601String() ?? now()->toIso8601String(),
+            ])
+            ->values();
+
         return response()->json([
-            'data' => BusinessType::query()
-                ->where('status', true)
-                ->orderBy('sort_order')
-                ->get(),
+            'data' => $types,
         ]);
     }
 
@@ -204,7 +229,13 @@ public function topBanners(): \Illuminate\Http\JsonResponse
 public function featuredMerchants(): JsonResponse
 {
     $merchants = Business::query()
-        ->with('businessType')
+        ->with([
+            'businessType',
+            'products' => fn ($query) => $query
+                ->where('is_active', true)
+                ->where('is_available', true)
+                ->orderBy('sort_order'),
+        ])
         ->where('is_active', true)
         ->where('is_featured', true)
         ->orderBy('sort_order')
@@ -219,31 +250,81 @@ public function featuredMerchants(): JsonResponse
                 'name' => $business->name,
                 'slug' => $business->slug,
 
-                'logo' => $business->logo,
-                'cover_image' => $business->cover_image,
+                'logo' => $this->imageUrl(
+                    $business->logo,
+                    $this->merchantFallbackImage($business)
+                ),
+                'cover_image' => $this->imageUrl(
+                    $business->cover_image,
+                    $this->merchantFallbackImage($business)
+                ),
 
-                'description' => $business->description,
+                'description' => (string) ($business->description ?? ''),
 
-                'phone' => $business->phone,
-                'city' => $business->city,
+                'phone' => (string) ($business->phone ?? ''),
+                'city' => (string) ($business->city ?? 'Tripoli'),
 
-                'latitude' => $business->latitude,
-                'longitude' => $business->longitude,
+                'latitude' => (string) ($business->latitude ?? '34.4367'),
+                'longitude' => (string) ($business->longitude ?? '35.8497'),
 
                 'is_featured' => $business->is_featured,
+
+                // Compatibility fields used by the current Flutter prototype.
+                'category' => $business->businessType?->name ?? 'Restaurant',
+                'eta' => '25–35 min',
+                'fee' => 1.50,
+                'minimum' => 5.00,
+                'products' => $business->products->map(fn (Product $product) => [
+                    'name' => (string) $product->name,
+                    'description' => (string) ($product->description ?? ''),
+                    'price' => (float) ($product->sale_price ?? $product->price),
+                    'image' => $this->imageUrl(
+                        $product->image,
+                        $this->merchantFallbackImage($business)
+                    ),
+                    'customizable' => false,
+                ])->values(),
 
                 'business_type' => $business->businessType
                     ? [
                         'id' => $business->businessType->id,
-                        'name' => $business->businessType->name,
-                        'slug' => $business->businessType->slug,
-                        'image' => $business->businessType->image,
+                        'name' => (string) $business->businessType->name,
+                        'slug' => (string) $business->businessType->slug,
+                        'image' => $this->imageUrl(
+                            $business->businessType->image,
+                            $this->merchantFallbackImage($business)
+                        ),
                     ]
-                    : null,
+                    : [
+                        'id' => 0,
+                        'name' => 'Restaurant',
+                        'slug' => 'restaurant',
+                        'image' => $this->merchantFallbackImage($business),
+                    ],
             ];
         })->values(),
     ]);
 }
+
+    private function merchantFallbackImage(Business $business): string
+    {
+        return $business->businessType?->slug === 'coffee'
+            ? 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=900&q=85'
+            : 'https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=900&q=85';
+    }
+
+    private function imageUrl(?string $image, string $fallback): string
+    {
+        if (! $image) {
+            return $fallback;
+        }
+
+        if (str_starts_with($image, 'http://') || str_starts_with($image, 'https://')) {
+            return $image;
+        }
+
+        return asset('storage/'.ltrim($image, '/'));
+    }
 
     public function product(Product $product): JsonResponse
     {
