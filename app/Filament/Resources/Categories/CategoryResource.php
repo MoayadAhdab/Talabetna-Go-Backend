@@ -14,6 +14,8 @@ use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -48,7 +50,24 @@ class CategoryResource extends Resource
                             ->relationship('business', 'name')
                             ->searchable()
                             ->preload()
+                            ->live()
+                            ->afterStateUpdated(fn (Set $set) => $set('parent_id', null))
                             ->required(),
+
+                        Select::make('parent_id')
+                            ->label('Parent Category')
+                            ->helperText('Leave empty for a main category. Select a main category to create a subcategory.')
+                            ->options(fn (Get $get, ?Category $record): array => Category::query()
+                                ->where('business_id', $get('business_id'))
+                                ->whereNull('parent_id')
+                                ->when($record, fn ($query) => $query->where('id', '!=', $record->getKey()))
+                                ->orderBy('sort_order')
+                                ->orderBy('name')
+                                ->pluck('name', 'id')
+                                ->all())
+                            ->searchable()
+                            ->preload()
+                            ->nullable(),
 
                         TextInput::make('name')
                             ->label('Category Name')
@@ -122,6 +141,11 @@ class CategoryResource extends Resource
                 TextColumn::make('business.name')
                     ->label('Business')
                     ->searchable()
+                    ->sortable(),
+
+                TextColumn::make('parent.name')
+                    ->label('Parent Category')
+                    ->placeholder('Main category')
                     ->sortable(),
 
                 IconColumn::make('is_active')
