@@ -44,25 +44,11 @@ Route::prefix('v1')->group(function () {
         'businesses',
     ]);
 
-    Route::get('/businesses/{business}', [
-        CatalogController::class,
-        'business',
-    ]);
+    Route::post('/businesses/details', [
+    CatalogController::class,
+    'businessDetailsFromBody',
+]);
 
-    // Route::get('/businesses/{business}/categories', [
-    //     CatalogController::class,
-    //     'categories',
-    // ]);
-
-    // Route::get('/businesses/{business}/products', [
-    //     CatalogController::class,
-    //     'products',
-    // ]);
-
-    // Route::get('/products/{product}', [
-    //     CatalogController::class,
-    //     'product',
-    // ]);
 
     /*
     | Mobile body-based compatibility routes

@@ -89,33 +89,127 @@ class CatalogController extends Controller
         ]);
     }
 
-    public function business(Business $business): JsonResponse
-    {
-        $activeProducts = fn ($query) => $query
-            ->where('is_active', true)
-            ->where('is_available', true)
-            ->orderBy('sort_order');
+   public function business(Business $business): JsonResponse
+{
+    abort_unless(
+        $business->is_active,
+        404
+    );
 
-        $business->load([
-            'businessType',
-            'branches' => fn ($query) =>
-                $query->where('is_active', true)
-                    ->orderBy('sort_order'),
-            'categories' => fn ($query) =>
-                $query->whereNull('parent_id')
-                    ->where('is_active', true)
-                    ->orderBy('sort_order'),
-            'categories.products' => $activeProducts,
-            'categories.children' => fn ($query) => $query
-                ->where('is_active', true)
-                ->orderBy('sort_order'),
-            'categories.children.products' => $activeProducts,
-        ]);
+    return response()->json([
+        'data' => [
+            'id' => $business->id,
+            'business_type_id' => $business->business_type_id,
 
-        return response()->json([
-            'data' => $business,
-        ]);
-    }
+            'name' => $business->name,
+            'slug' => $business->slug,
+
+            'description' => $business->description,
+
+            'logo' => $this->imageUrl(
+                $business->logo,
+                $this->merchantFallbackImage($business)
+            ),
+
+            'cover_image' => $this->imageUrl(
+                $business->cover_image,
+                $this->merchantFallbackImage($business)
+            ),
+
+            'phone' => $business->phone,
+            'email' => $business->email,
+
+            'address' => $business->address,
+            'city' => $business->city,
+
+            'latitude' => $business->latitude,
+            'longitude' => $business->longitude,
+
+            'commission_rate' => (float) $business->commission_rate,
+
+            'is_active' => (bool) $business->is_active,
+            'is_featured' => (bool) $business->is_featured,
+
+            'sort_order' => (int) $business->sort_order,
+
+            'settings' => $business->settings,
+
+            'created_at' =>
+                $business->created_at?->toIso8601String(),
+
+            'updated_at' =>
+                $business->updated_at?->toIso8601String(),
+        ],
+    ]);
+}
+
+public function businessDetailsFromBody(Request $request): JsonResponse
+{
+    $validated = $request->validate([
+        'business_id' => [
+            'required',
+            'integer',
+            'exists:businesses,id',
+        ],
+    ]);
+
+    $business = Business::query()
+        ->where('id', $validated['business_id'])
+        ->where('is_active', true)
+        ->firstOrFail();
+
+    return response()->json([
+        'data' => [
+            'id' => $business->id,
+            'business_type_id' => $business->business_type_id,
+
+            'name' => $business->name,
+            'slug' => $business->slug,
+
+            'description' => $business->description,
+
+            'logo' => $this->imageUrl(
+                $business->logo,
+                $this->merchantFallbackImage($business)
+            ),
+
+            'cover_image' => $this->imageUrl(
+                $business->cover_image,
+                $this->merchantFallbackImage($business)
+            ),
+
+            'phone' => $business->phone,
+            'email' => $business->email,
+
+            'address' => $business->address,
+            'city' => $business->city,
+
+            'latitude' => $business->latitude,
+            'longitude' => $business->longitude,
+
+            'commission_rate' =>
+                (float) $business->commission_rate,
+
+            'is_active' =>
+                (bool) $business->is_active,
+
+            'is_featured' =>
+                (bool) $business->is_featured,
+
+            'sort_order' =>
+                (int) $business->sort_order,
+
+            'settings' =>
+                $business->settings,
+
+            'created_at' =>
+                $business->created_at?->toIso8601String(),
+
+            'updated_at' =>
+                $business->updated_at?->toIso8601String(),
+        ],
+    ]);
+}
 
     public function categories(Business $business): JsonResponse
     {
