@@ -49,20 +49,20 @@ Route::prefix('v1')->group(function () {
         'business',
     ]);
 
-    Route::get('/businesses/{business}/categories', [
-        CatalogController::class,
-        'categories',
-    ]);
+    // Route::get('/businesses/{business}/categories', [
+    //     CatalogController::class,
+    //     'categories',
+    // ]);
 
-    Route::get('/businesses/{business}/products', [
-        CatalogController::class,
-        'products',
-    ]);
+    // Route::get('/businesses/{business}/products', [
+    //     CatalogController::class,
+    //     'products',
+    // ]);
 
-    Route::get('/products/{product}', [
-        CatalogController::class,
-        'product',
-    ]);
+    // Route::get('/products/{product}', [
+    //     CatalogController::class,
+    //     'product',
+    // ]);
 
     /*
     | Mobile body-based compatibility routes
