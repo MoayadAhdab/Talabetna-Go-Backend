@@ -111,7 +111,21 @@ class CategoryResource extends Resource
                             ->default(0),
                     ])
                     ->columns(2),
-
+Select::make('parent_id')
+    ->label('Parent Category')
+    ->options(function ($record) {
+        return Category::query()
+            ->where('business_id', $record?->business_id)
+            ->whereNull('parent_id')
+            ->when(
+                $record,
+                fn ($query) => $query->whereKeyNot($record->id)
+            )
+            ->orderBy('sort_order')
+            ->pluck('name', 'id');
+    })
+    ->searchable()
+    ->nullable(),
                 Section::make('Additional Settings')
                     ->schema([
                         KeyValue::make('settings')

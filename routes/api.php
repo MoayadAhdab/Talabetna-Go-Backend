@@ -95,5 +95,17 @@ Route::get('/merchants/featured', [
             AuthController::class,
             'logout',
         ]);
+            Route::get('/merchants/{business}/categories', [
+        CatalogController::class,
+        'categories',
+    ]);
+
+    Route::get(
+        '/merchants/{business}/categories/{category}/products',
+        [
+            CatalogController::class,
+            'categoryProducts',
+        ]
+    );
     });
 });

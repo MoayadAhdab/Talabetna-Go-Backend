@@ -13,10 +13,9 @@ return new class extends Migration
                 ->nullable()
                 ->after('business_id')
                 ->constrained('categories')
-                ->cascadeOnUpdate()
                 ->nullOnDelete();
 
-            $table->index(['business_id', 'parent_id']);
+            $table->index('parent_id');
         });
     }
 
@@ -24,7 +23,7 @@ return new class extends Migration
     {
         Schema::table('categories', function (Blueprint $table) {
             $table->dropForeign(['parent_id']);
-            $table->dropIndex(['business_id', 'parent_id']);
+            $table->dropIndex(['parent_id']);
             $table->dropColumn('parent_id');
         });
     }

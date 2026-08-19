@@ -211,29 +211,105 @@ public function businessDetailsFromBody(Request $request): JsonResponse
     ]);
 }
 
-    public function categories(Business $business): JsonResponse
-    {
-        $activeProducts = fn ($query) => $query
+public function categories(Business $business): JsonResponse
+{
+    $categories = $business->categories()
+        ->with([
+            'children' => fn ($query) =>
+                $query
+                    ->where('is_active', true)
+                    ->orderBy('sort_order'),
+        ])
+        ->where('is_active', true)
+        ->whereNull('parent_id')
+        ->orderBy('sort_order')
+        ->get();
+
+    return response()->json([
+        'data' => $categories->map(function (Category $category) {
+            return [
+                'id' => $category->id,
+                'name' => $category->name,
+                'slug' => $category->slug,
+                'description' => $category->description,
+                'image' => $category->image,
+
+                'subcategories' => $category->children->map(
+                    function (Category $child) {
+                        return [
+                            'id' => $child->id,
+                            'name' => $child->name,
+                            'slug' => $child->slug,
+                            'description' => $child->description,
+                            'image' => $child->image,
+                        ];
+                    }
+                )->values(),
+            ];
+        }),
+    ]);
+}
+public function categoryProducts(
+    Business $business,
+    Category $category
+): JsonResponse {
+    abort_unless(
+        $category->business_id === $business->id,
+        404
+    );
+
+    $categoryIds = collect([
+        $category->id,
+        ...$category->children()
             ->where('is_active', true)
-            ->where('is_available', true)
-            ->orderBy('sort_order');
+            ->pluck('id')
+            ->all(),
+    ]);
 
-        return response()->json([
-            'data' => $business->categories()
-                ->whereNull('parent_id')
+    $products = Product::query()
+        ->with([
+            'category',
+            'modifierGroups.options',
+        ])
+        ->where('business_id', $business->id)
+        ->whereIn('category_id', $categoryIds)
+        ->where('is_active', true)
+        ->where('is_available', true)
+        ->orderBy('sort_order')
+        ->get();
+
+    return response()->json([
+        'data' => [
+            'category' => [
+                'id' => $category->id,
+                'name' => $category->name,
+                'slug' => $category->slug,
+            ],
+
+            'subcategories' => $category->children
                 ->where('is_active', true)
-                ->orderBy('sort_order')
-                ->with([
-                    'products' => $activeProducts,
-                    'children' => fn ($query) => $query
-                        ->where('is_active', true)
-                        ->orderBy('sort_order'),
-                    'children.products' => $activeProducts,
-                ])
-                ->get(),
-        ]);
-    }
+                ->values()
+                ->map(function (Category $subCategory) use ($products) {
+                    return [
+                        'id' => $subCategory->id,
+                        'name' => $subCategory->name,
+                        'slug' => $subCategory->slug,
 
+                        'products' => $products
+                            ->where(
+                                'category_id',
+                                $subCategory->id
+                            )
+                            ->values(),
+                    ];
+                }),
+
+            'products' => $products
+                ->where('category_id', $category->id)
+                ->values(),
+        ],
+    ]);
+}
     /**
      * Mobile compatibility endpoint.
      *
