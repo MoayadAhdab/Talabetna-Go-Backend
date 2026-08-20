@@ -341,47 +341,51 @@ class CatalogController extends Controller
         );
     }
 
-    public function products(
-        Request $request,
-        Business $business
-    ): JsonResponse {
-        $query = Product::query()
-            ->with([
-                'category',
-                'modifierGroups.options',
-            ])
-            ->where('business_id', $business->id)
-            ->where('is_active', true)
-            ->where('is_available', true)
-            ->orderBy('sort_order');
+ public function products(
+    Request $request,
+    Business $business
+): JsonResponse {
+    $query = Product::query()
+        ->with([
+            'category',
+            'modifierGroups' => function ($query) {
+                $query->orderByDesc('is_required')
+                      ->orderBy('sort_order');
+            },
+            'modifierGroups.options',
+        ])
+        ->where('business_id', $business->id)
+        ->where('is_active', true)
+        ->where('is_available', true)
+        ->orderBy('sort_order');
 
-        if ($request->filled('category_id')) {
-            $category = $business->categories()
-                ->findOrFail(
-                    $request->integer('category_id')
-                );
+    if ($request->filled('category_id')) {
+        $category = $business->categories()
+            ->findOrFail(
+                $request->integer('category_id')
+            );
 
-            $categoryIds = [$category->id];
+        $categoryIds = [$category->id];
 
-            if ($category->parent_id === null) {
-                $categoryIds = array_merge(
-                    $categoryIds,
-                    $category->children()->pluck('id')->all()
-                );
-            }
-
-            $query->whereIn('category_id', $categoryIds);
+        if ($category->parent_id === null) {
+            $categoryIds = array_merge(
+                $categoryIds,
+                $category->children()->pluck('id')->all()
+            );
         }
 
-        return response()->json([
-            'data' => $query->paginate(
-                min(
-                    $request->integer('per_page', 20),
-                    100
-                )
-            ),
-        ]);
+        $query->whereIn('category_id', $categoryIds);
     }
+
+    return response()->json([
+        'data' => $query->paginate(
+            min(
+                $request->integer('per_page', 20),
+                100
+            )
+        ),
+    ]);
+}
 
     /**
      * Mobile compatibility endpoint.
