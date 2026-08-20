@@ -20,9 +20,9 @@ class CatalogController extends Controller
             ->orderBy('sort_order')
             ->get()
             ->map(fn (BusinessType $type) => [
-                'id' => $type->id,
-                'name' => (string) $type->name,
-                'slug' => (string) $type->slug,
+                'id' => (int) $type->id,
+                'name' => (string) ($type->name ?? ''),
+                'slug' => (string) ($type->slug ?? ''),
                 'description' => (string) ($type->description ?? ''),
                 'icon' => (string) ($type->icon ?? 'heroicon-o-building-storefront'),
                 'image' => $this->imageUrl(
@@ -32,14 +32,14 @@ class CatalogController extends Controller
                         : 'https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=900&q=85'
                 ),
                 'status' => (bool) $type->status,
-                'sort_order' => (int) $type->sort_order,
+                'sort_order' => (int) ($type->sort_order ?? 0),
                 'settings' => [
-                    'supports_pickup' => 'true',
-                    'supports_delivery' => 'true',
-                    'supports_scheduled_orders' => 'true',
+                    'supports_pickup' => true,
+                    'supports_delivery' => true,
+                    'supports_scheduled_orders' => true,
                 ],
-                'created_at' => $type->created_at?->toIso8601String() ?? now()->toIso8601String(),
-                'updated_at' => $type->updated_at?->toIso8601String() ?? now()->toIso8601String(),
+                'created_at' => $type->created_at?->toIso8601String() ?? '',
+                'updated_at' => $type->updated_at?->toIso8601String() ?? '',
             ])
             ->values();
 
@@ -89,244 +89,255 @@ class CatalogController extends Controller
         ]);
     }
 
-   public function business(Business $business): JsonResponse
-{
-    abort_unless(
-        $business->is_active,
-        404
-    );
+    public function business(Business $business): JsonResponse
+    {
+        abort_unless(
+            $business->is_active,
+            404
+        );
 
-    return response()->json([
-        'data' => [
-            'id' => $business->id,
-            'business_type_id' => $business->business_type_id,
+        return response()->json([
+            'data' => [
+                'id' => (int) $business->id,
+                'business_type_id' => (int) ($business->business_type_id ?? 0),
 
-            'name' => $business->name,
-            'slug' => $business->slug,
+                'name' => (string) ($business->name ?? ''),
+                'slug' => (string) ($business->slug ?? ''),
 
-            'description' => $business->description,
+                'description' => (string) ($business->description ?? ''),
 
-            'logo' => $this->imageUrl(
-                $business->logo,
-                $this->merchantFallbackImage($business)
-            ),
+                'logo' => $this->imageUrl(
+                    $business->logo,
+                    $this->merchantFallbackImage($business)
+                ),
 
-            'cover_image' => $this->imageUrl(
-                $business->cover_image,
-                $this->merchantFallbackImage($business)
-            ),
+                'cover_image' => $this->imageUrl(
+                    $business->cover_image,
+                    $this->merchantFallbackImage($business)
+                ),
 
-            'phone' => $business->phone,
-            'email' => $business->email,
+                'phone' => (string) ($business->phone ?? ''),
+                'email' => (string) ($business->email ?? ''),
 
-            'address' => $business->address,
-            'city' => $business->city,
+                'address' => (string) ($business->address ?? ''),
+                'city' => (string) ($business->city ?? ''),
 
-            'latitude' => $business->latitude,
-            'longitude' => $business->longitude,
+                'latitude' => (float) ($business->latitude ?? 0),
+                'longitude' => (float) ($business->longitude ?? 0),
 
-            'commission_rate' => (float) $business->commission_rate,
+                'commission_rate' => (float) ($business->commission_rate ?? 0),
 
-            'is_active' => (bool) $business->is_active,
-            'is_featured' => (bool) $business->is_featured,
+                'is_active' => (bool) $business->is_active,
+                'is_featured' => (bool) $business->is_featured,
 
-            'sort_order' => (int) $business->sort_order,
+                'sort_order' => (int) ($business->sort_order ?? 0),
 
-            'settings' => $business->settings,
+                'settings' => is_array($business->settings)
+                    ? $business->settings
+                    : [],
 
-            'created_at' =>
-                $business->created_at?->toIso8601String(),
+                'created_at' =>
+                    $business->created_at?->toIso8601String() ?? '',
 
-            'updated_at' =>
-                $business->updated_at?->toIso8601String(),
-        ],
-    ]);
-}
-
-public function businessDetailsFromBody(Request $request): JsonResponse
-{
-    $validated = $request->validate([
-        'business_id' => [
-            'required',
-            'integer',
-            'exists:businesses,id',
-        ],
-    ]);
-
-    $business = Business::query()
-        ->where('id', $validated['business_id'])
-        ->where('is_active', true)
-        ->firstOrFail();
-
-    return response()->json([
-        'data' => [
-            'id' => $business->id,
-            'business_type_id' => $business->business_type_id,
-
-            'name' => $business->name,
-            'slug' => $business->slug,
-
-            'description' => $business->description,
-
-            'logo' => $this->imageUrl(
-                $business->logo,
-                $this->merchantFallbackImage($business)
-            ),
-
-            'cover_image' => $this->imageUrl(
-                $business->cover_image,
-                $this->merchantFallbackImage($business)
-            ),
-
-            'phone' => $business->phone,
-            'email' => $business->email,
-
-            'address' => $business->address,
-            'city' => $business->city,
-
-            'latitude' => $business->latitude,
-            'longitude' => $business->longitude,
-
-            'commission_rate' =>
-                (float) $business->commission_rate,
-
-            'is_active' =>
-                (bool) $business->is_active,
-
-            'is_featured' =>
-                (bool) $business->is_featured,
-
-            'sort_order' =>
-                (int) $business->sort_order,
-
-            'settings' =>
-                $business->settings,
-
-            'created_at' =>
-                $business->created_at?->toIso8601String(),
-
-            'updated_at' =>
-                $business->updated_at?->toIso8601String(),
-        ],
-    ]);
-}
-
-public function categories(Business $business): JsonResponse
-{
-    $categories = $business->categories()
-        ->with([
-            'children' => fn ($query) =>
-                $query
-                    ->where('is_active', true)
-                    ->orderBy('sort_order'),
-        ])
-        ->where('is_active', true)
-        ->whereNull('parent_id')
-        ->orderBy('sort_order')
-        ->get();
-
-    return response()->json([
-        'data' => $categories->map(function (Category $category) {
-            return [
-                'id' => $category->id,
-                'name' => $category->name,
-                'slug' => $category->slug,
-                'description' => $category->description,
-                'image' => $category->image,
-
-                'subcategories' => $category->children->map(
-                    function (Category $child) {
-                        return [
-                            'id' => $child->id,
-                            'name' => $child->name,
-                            'slug' => $child->slug,
-                            'description' => $child->description,
-                            'image' => $child->image,
-                        ];
-                    }
-                )->values(),
-            ];
-        }),
-    ]);
-}
-public function categoryProducts(
-    Business $business,
-    Category $category
-): JsonResponse {
-    abort_unless(
-        $category->business_id === $business->id,
-        404
-    );
-
-    $categoryIds = collect([
-        $category->id,
-        ...$category->children()
-            ->where('is_active', true)
-            ->pluck('id')
-            ->all(),
-    ]);
-
-    $products = Product::query()
-        ->with([
-            'category',
-            'modifierGroups.options',
-        ])
-        ->where('business_id', $business->id)
-        ->whereIn('category_id', $categoryIds)
-        ->where('is_active', true)
-        ->where('is_available', true)
-        ->orderBy('sort_order')
-        ->get();
-
-    return response()->json([
-        'data' => [
-            'category' => [
-                'id' => $category->id,
-                'name' => $category->name,
-                'slug' => $category->slug,
+                'updated_at' =>
+                    $business->updated_at?->toIso8601String() ?? '',
             ],
+        ]);
+    }
 
-            'subcategories' => $category->children
+    public function businessDetailsFromBody(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'business_id' => [
+                'required',
+                'integer',
+                'exists:businesses,id',
+            ],
+        ]);
+
+        $business = Business::query()
+            ->where('id', $validated['business_id'])
+            ->where('is_active', true)
+            ->firstOrFail();
+
+        return response()->json([
+            'data' => [
+                'id' => (int) $business->id,
+                'business_type_id' => (int) ($business->business_type_id ?? 0),
+
+                'name' => (string) ($business->name ?? ''),
+                'slug' => (string) ($business->slug ?? ''),
+
+                'description' => (string) ($business->description ?? ''),
+
+                'logo' => $this->imageUrl(
+                    $business->logo,
+                    $this->merchantFallbackImage($business)
+                ),
+
+                'cover_image' => $this->imageUrl(
+                    $business->cover_image,
+                    $this->merchantFallbackImage($business)
+                ),
+
+                'phone' => (string) ($business->phone ?? ''),
+                'email' => (string) ($business->email ?? ''),
+
+                'address' => (string) ($business->address ?? ''),
+                'city' => (string) ($business->city ?? ''),
+
+                'latitude' => (float) ($business->latitude ?? 0),
+                'longitude' => (float) ($business->longitude ?? 0),
+
+                'commission_rate' =>
+                    (float) ($business->commission_rate ?? 0),
+
+                'is_active' =>
+                    (bool) $business->is_active,
+
+                'is_featured' =>
+                    (bool) $business->is_featured,
+
+                'sort_order' =>
+                    (int) ($business->sort_order ?? 0),
+
+                'settings' =>
+                    is_array($business->settings)
+                        ? $business->settings
+                        : [],
+
+                'created_at' =>
+                    $business->created_at?->toIso8601String() ?? '',
+
+                'updated_at' =>
+                    $business->updated_at?->toIso8601String() ?? '',
+            ],
+        ]);
+    }
+
+    public function categories(Business $business): JsonResponse
+    {
+        $categories = $business->categories()
+            ->with([
+                'children' => fn ($query) =>
+                    $query
+                        ->where('is_active', true)
+                        ->orderBy('sort_order'),
+            ])
+            ->where('is_active', true)
+            ->whereNull('parent_id')
+            ->orderBy('sort_order')
+            ->get();
+
+        return response()->json([
+            'data' => $categories->map(function (Category $category) {
+                return [
+                    'id' => (int) $category->id,
+                    'name' => (string) ($category->name ?? ''),
+                    'slug' => (string) ($category->slug ?? ''),
+                    'description' => (string) ($category->description ?? ''),
+                    'image' => (string) ($category->image ?? ''),
+
+                    'subcategories' => $category->children
+                        ->map(function (Category $child) {
+                            return [
+                                'id' => (int) $child->id,
+                                'name' => (string) ($child->name ?? ''),
+                                'slug' => (string) ($child->slug ?? ''),
+                                'description' => (string) ($child->description ?? ''),
+                                'image' => (string) ($child->image ?? ''),
+                            ];
+                        })
+                        ->values(),
+                ];
+            })->values(),
+        ]);
+    }
+
+    public function categoryProducts(
+        Business $business,
+        Category $category
+    ): JsonResponse {
+        abort_unless(
+            $category->business_id === $business->id,
+            404
+        );
+
+        $categoryIds = collect([
+            $category->id,
+            ...$category->children()
                 ->where('is_active', true)
-                ->values()
-                ->map(function (Category $subCategory) use ($products) {
-                    return [
-                        'id' => $subCategory->id,
-                        'name' => $subCategory->name,
-                        'slug' => $subCategory->slug,
+                ->pluck('id')
+                ->all(),
+        ]);
 
-                        'products' => $products
-                            ->where(
-                                'category_id',
-                                $subCategory->id
-                            )
-                            ->values(),
-                    ];
-                }),
+        $products = Product::query()
+            ->with([
+                'category',
+                'modifierGroups.options',
+            ])
+            ->where('business_id', $business->id)
+            ->whereIn('category_id', $categoryIds)
+            ->where('is_active', true)
+            ->where('is_available', true)
+            ->orderBy('sort_order')
+            ->get();
 
-            'products' => $products
-                ->where('category_id', $category->id)
-                ->values(),
-        ],
-    ]);
-}
+        return response()->json([
+            'data' => [
+                'category' => [
+                    'id' => (int) $category->id,
+                    'name' => (string) ($category->name ?? ''),
+                    'slug' => (string) ($category->slug ?? ''),
+                ],
+
+                'subcategories' => $category->children
+                    ->where('is_active', true)
+                    ->values()
+                    ->map(function (Category $subCategory) use ($products) {
+                        return [
+                            'id' => (int) $subCategory->id,
+                            'name' => (string) ($subCategory->name ?? ''),
+                            'slug' => (string) ($subCategory->slug ?? ''),
+
+                            'products' => $products
+                                ->where(
+                                    'category_id',
+                                    $subCategory->id
+                                )
+                                ->values(),
+                        ];
+                    })
+                    ->values(),
+
+                'products' => $products
+                    ->where('category_id', $category->id)
+                    ->values(),
+            ],
+        ]);
+    }
+
     /**
      * Mobile compatibility endpoint.
      *
      * POST /api/v1/catalog/categories
-     * Body: { "business_id": 1 }
      *
-     * The original GET endpoint remains available. This method exists for
-     * Flutter clients whose networking layer sends identifiers in the body.
+     * Body: { "business_id": 1 }
      */
     public function categoriesFromBody(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'business_id' => ['required', 'integer', 'exists:businesses,id'],
+            'business_id' => [
+                'required',
+                'integer',
+                'exists:businesses,id',
+            ],
         ]);
 
         return $this->categories(
-            Business::query()->findOrFail($validated['business_id'])
+            Business::query()->findOrFail(
+                $validated['business_id']
+            )
         );
     }
 
@@ -346,7 +357,9 @@ public function categoryProducts(
 
         if ($request->filled('category_id')) {
             $category = $business->categories()
-                ->findOrFail($request->integer('category_id'));
+                ->findOrFail(
+                    $request->integer('category_id')
+                );
 
             $categoryIds = [$category->id];
 
@@ -374,185 +387,223 @@ public function categoryProducts(
      * Mobile compatibility endpoint.
      *
      * POST /api/v1/catalog/products
+     *
      * Body: { "business_id": 1, "category_id": 3 }
      */
     public function productsFromBody(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'business_id' => ['required', 'integer', 'exists:businesses,id'],
-            'category_id' => ['nullable', 'integer', 'exists:categories,id'],
-            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'business_id' => [
+                'required',
+                'integer',
+                'exists:businesses,id',
+            ],
+
+            'category_id' => [
+                'nullable',
+                'integer',
+                'exists:categories,id',
+            ],
+
+            'per_page' => [
+                'nullable',
+                'integer',
+                'min:1',
+                'max:100',
+            ],
         ]);
 
-        $catalogRequest = Request::create('/', 'GET', array_filter([
-            'category_id' => $validated['category_id'] ?? null,
-            'per_page' => $validated['per_page'] ?? null,
-        ], fn ($value) => $value !== null));
+        $catalogRequest = Request::create(
+            '/',
+            'GET',
+            array_filter([
+                'category_id' => $validated['category_id'] ?? null,
+                'per_page' => $validated['per_page'] ?? null,
+            ], fn ($value) => $value !== null)
+        );
 
         return $this->products(
             $catalogRequest,
-            Business::query()->findOrFail($validated['business_id'])
+            Business::query()->findOrFail(
+                $validated['business_id']
+            )
         );
     }
+
     public function popularMerchants(): JsonResponse
-{
-    $merchants = Business::query()
-        ->with('businessType')
-        ->where('is_active', true)
-        ->where('is_featured', true)
-        ->orderBy('sort_order')
-        ->orderByDesc('id')
-        ->limit(20)
-        ->get();
+    {
+        $merchants = Business::query()
+            ->with('businessType')
+            ->where('is_active', true)
+            ->where('is_featured', true)
+            ->orderBy('sort_order')
+            ->orderByDesc('id')
+            ->limit(20)
+            ->get();
 
-    return response()->json([
-        'data' => $merchants->map(function (Business $business) {
-            return [
-                'id' => $business->id,
-                'name' => $business->name,
-                'slug' => $business->slug,
-                'description' => $business->description,
-                'logo' => $business->logo,
-                'cover_image' => $business->cover_image,
-                'city' => $business->city,
-                'business_type' => [
-                    'id' => $business->businessType?->id,
-                    'name' => $business->businessType?->name,
-                    'image' => $business->businessType?->image,
-                ],
-                'is_featured' => $business->is_featured,
-            ];
-        }),
-    ]);
-}
-public function topBanners(): \Illuminate\Http\JsonResponse
-{
-    $banners = Banner::query()
-        ->with('business')
-        ->where('placement', 'top')
-        ->where('is_active', true)
-        ->where(function ($query) {
-            $query
-                ->whereNull('starts_at')
-                ->orWhere('starts_at', '<=', now());
-        })
-        ->where(function ($query) {
-            $query
-                ->whereNull('expires_at')
-                ->orWhere('expires_at', '>=', now());
-        })
-        ->orderBy('sort_order')
-        ->orderByDesc('id')
-        ->get();
+        return response()->json([
+            'data' => $merchants->map(function (Business $business) {
+                return [
+                    'id' => (int) $business->id,
+                    'name' => (string) ($business->name ?? ''),
+                    'slug' => (string) ($business->slug ?? ''),
+                    'description' => (string) ($business->description ?? ''),
 
-    return response()->json([
-        'data' => $banners->map(function (Banner $banner) {
-            return [
-                'id' => $banner->id,
-                'title' => $banner->title,
-                'subtitle' => $banner->subtitle,
-                'image' => $banner->image,
-                'mobile_image' => $banner->mobile_image,
-                'placement' => $banner->placement,
+                    'logo' => (string) ($business->logo ?? ''),
+                    'cover_image' => (string) ($business->cover_image ?? ''),
 
-                'link' => [
-                    'type' => $banner->link_type,
-                    'value' => $banner->link_value,
-                ],
+                    'city' => (string) ($business->city ?? ''),
 
-                'merchant' => $banner->business
-                    ? [
-                        'id' => $banner->business->id,
-                        'name' => $banner->business->name,
-                        'slug' => $banner->business->slug,
-                        'logo' => $banner->business->logo,
-                    ]
-                    : null,
+                    'business_type' => [
+                        'id' => (int) ($business->businessType?->id ?? 0),
+                        'name' => (string) ($business->businessType?->name ?? ''),
+                        'image' => (string) ($business->businessType?->image ?? ''),
+                    ],
 
-                'sort_order' => $banner->sort_order,
-            ];
-        })->values(),
-    ]);
-}
-public function featuredMerchants(): JsonResponse
-{
-    $merchants = Business::query()
-        ->with([
-            'businessType',
-            'products' => fn ($query) => $query
-                ->where('is_active', true)
-                ->where('is_available', true)
-                ->orderBy('sort_order'),
-        ])
-        ->where('is_active', true)
-        ->where('is_featured', true)
-        ->orderBy('sort_order')
-        ->orderBy('name')
-        ->limit(20)
-        ->get();
+                    'is_featured' => (bool) $business->is_featured,
+                ];
+            })->values(),
+        ]);
+    }
 
-    return response()->json([
-        'data' => $merchants->map(function (Business $business) {
-            return [
-                'id' => $business->id,
-                'name' => $business->name,
-                'slug' => $business->slug,
+    public function topBanners(): JsonResponse
+    {
+        $banners = Banner::query()
+            ->with('business')
+            ->where('placement', 'top')
+            ->where('is_active', true)
+            ->where(function ($query) {
+                $query
+                    ->whereNull('starts_at')
+                    ->orWhere('starts_at', '<=', now());
+            })
+            ->where(function ($query) {
+                $query
+                    ->whereNull('expires_at')
+                    ->orWhere('expires_at', '>=', now());
+            })
+            ->orderBy('sort_order')
+            ->orderByDesc('id')
+            ->get();
 
-                'logo' => $this->imageUrl(
-                    $business->logo,
-                    $this->merchantFallbackImage($business)
-                ),
-                'cover_image' => $this->imageUrl(
-                    $business->cover_image,
-                    $this->merchantFallbackImage($business)
-                ),
+        return response()->json([
+            'data' => $banners->map(function (Banner $banner) {
+                return [
+                    'id' => (int) $banner->id,
+                    'title' => (string) ($banner->title ?? ''),
+                    'subtitle' => (string) ($banner->subtitle ?? ''),
+                    'image' => (string) ($banner->image ?? ''),
+                    'mobile_image' => (string) ($banner->mobile_image ?? ''),
+                    'placement' => (string) ($banner->placement ?? ''),
 
-                'description' => (string) ($business->description ?? ''),
+                    'link' => [
+                        'type' => (string) ($banner->link_type ?? ''),
+                        'value' => (string) ($banner->link_value ?? ''),
+                    ],
 
-                'phone' => (string) ($business->phone ?? ''),
-                'city' => (string) ($business->city ?? 'Tripoli'),
+                    'merchant' => $banner->business
+                        ? [
+                            'id' => (int) $banner->business->id,
+                            'name' => (string) ($banner->business->name ?? ''),
+                            'slug' => (string) ($banner->business->slug ?? ''),
+                            'logo' => (string) ($banner->business->logo ?? ''),
+                        ]
+                        : [],
 
-                'latitude' => (string) ($business->latitude ?? '34.4367'),
-                'longitude' => (string) ($business->longitude ?? '35.8497'),
+                    'sort_order' => (int) ($banner->sort_order ?? 0),
+                ];
+            })->values(),
+        ]);
+    }
 
-                'is_featured' => $business->is_featured,
+    public function featuredMerchants(): JsonResponse
+    {
+        $merchants = Business::query()
+            ->with([
+                'businessType',
+                'products' => fn ($query) => $query
+                    ->where('is_active', true)
+                    ->where('is_available', true)
+                    ->orderBy('sort_order'),
+            ])
+            ->where('is_active', true)
+            ->where('is_featured', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->limit(20)
+            ->get();
 
-                // Compatibility fields used by the current Flutter prototype.
-                'category' => $business->businessType?->name ?? 'Restaurant',
-                'eta' => '25–35 min',
-                'fee' => 1.50,
-                'minimum' => 5.00,
-                'products' => $business->products->map(fn (Product $product) => [
-                    'name' => (string) $product->name,
-                    'description' => (string) ($product->description ?? ''),
-                    'price' => (float) ($product->sale_price ?? $product->price),
-                    'image' => $this->imageUrl(
-                        $product->image,
+        return response()->json([
+            'data' => $merchants->map(function (Business $business) {
+                return [
+                    'id' => (int) $business->id,
+                    'name' => (string) ($business->name ?? ''),
+                    'slug' => (string) ($business->slug ?? ''),
+
+                    'logo' => $this->imageUrl(
+                        $business->logo,
                         $this->merchantFallbackImage($business)
                     ),
-                    'customizable' => false,
-                ])->values(),
 
-                'business_type' => $business->businessType
-                    ? [
-                        'id' => $business->businessType->id,
-                        'name' => (string) $business->businessType->name,
-                        'slug' => (string) $business->businessType->slug,
-                        'image' => $this->imageUrl(
-                            $business->businessType->image,
-                            $this->merchantFallbackImage($business)
-                        ),
-                    ]
-                    : [
-                        'id' => 0,
-                        'name' => 'Restaurant',
-                        'slug' => 'restaurant',
-                        'image' => $this->merchantFallbackImage($business),
-                    ],
-            ];
-        })->values(),
-    ]);
-}
+                    'cover_image' => $this->imageUrl(
+                        $business->cover_image,
+                        $this->merchantFallbackImage($business)
+                    ),
+
+                    'description' => (string) ($business->description ?? ''),
+
+                    'phone' => (string) ($business->phone ?? ''),
+
+                    'city' => (string) ($business->city ?? 'Tripoli'),
+
+                    'latitude' => (float) ($business->latitude ?? 34.4367),
+
+                    'longitude' => (float) ($business->longitude ?? 35.8497),
+
+                    'is_featured' => (bool) $business->is_featured,
+
+                    'category' =>
+                        (string) ($business->businessType?->name ?? 'Restaurant'),
+
+                    'eta' => '25–35 min',
+
+                    'fee' => 1.50,
+
+                    'minimum' => 5.00,
+
+                    'products' => $business->products
+                        ->map(fn (Product $product) => [
+                            'name' => (string) ($product->name ?? ''),
+                            'description' => (string) ($product->description ?? ''),
+                            'price' => (float) ($product->sale_price ?? $product->price ?? 0),
+                            'image' => $this->imageUrl(
+                                $product->image,
+                                $this->merchantFallbackImage($business)
+                            ),
+                            'customizable' => false,
+                        ])
+                        ->values(),
+
+                    'business_type' => $business->businessType
+                        ? [
+                            'id' => (int) $business->businessType->id,
+                            'name' => (string) ($business->businessType->name ?? ''),
+                            'slug' => (string) ($business->businessType->slug ?? ''),
+                            'image' => $this->imageUrl(
+                                $business->businessType->image,
+                                $this->merchantFallbackImage($business)
+                            ),
+                        ]
+                        : [
+                            'id' => 0,
+                            'name' => 'Restaurant',
+                            'slug' => 'restaurant',
+                            'image' => $this->merchantFallbackImage($business),
+                        ],
+                ];
+            })->values(),
+        ]);
+    }
 
     private function merchantFallbackImage(Business $business): string
     {
@@ -567,11 +618,14 @@ public function featuredMerchants(): JsonResponse
             return $fallback;
         }
 
-        if (str_starts_with($image, 'http://') || str_starts_with($image, 'https://')) {
+        if (
+            str_starts_with($image, 'http://') ||
+            str_starts_with($image, 'https://')
+        ) {
             return $image;
         }
 
-        return asset('storage/'.ltrim($image, '/'));
+        return asset('storage/' . ltrim($image, '/'));
     }
 
     public function product(Product $product): JsonResponse
@@ -596,16 +650,23 @@ public function featuredMerchants(): JsonResponse
      * Mobile compatibility endpoint.
      *
      * POST /api/v1/catalog/product-details
+     *
      * Body: { "product_id": 7 }
      */
     public function productFromBody(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'product_id' => ['required', 'integer', 'exists:products,id'],
+            'product_id' => [
+                'required',
+                'integer',
+                'exists:products,id',
+            ],
         ]);
 
         return $this->product(
-            Product::query()->findOrFail($validated['product_id'])
+            Product::query()->findOrFail(
+                $validated['product_id']
+            )
         );
     }
 }
