@@ -632,22 +632,27 @@ class CatalogController extends Controller
         return asset('storage/' . ltrim($image, '/'));
     }
 
-   public function product(Product $product): JsonResponse
+public function product(Product $product): JsonResponse
 {
     abort_unless(
-        $product->is_active,
+        $product->is_active && $product->is_available,
         404
     );
 
     $product->load([
         'business',
         'category',
+
         'modifierGroups' => fn ($query) => $query
+            ->where('is_active', true)
             ->orderByDesc('is_required')
-            ->orderBy('sort_order'),
+            ->orderBy('sort_order')
+            ->orderBy('id'),
 
         'modifierGroups.options' => fn ($query) => $query
-            ->orderBy('sort_order'),
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('id'),
     ]);
 
     return response()->json([
