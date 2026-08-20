@@ -276,150 +276,72 @@ class CatalogController extends Controller
     |--------------------------------------------------------------------------
     */
 
-   public function product(Product $product): JsonResponse
-{
-    abort_unless(
-        $product->is_active && $product->is_available,
-        404
-    );
+    public function products(
+        Request $request,
+        Business $business
+    ): JsonResponse {
+        abort_unless(
+            $business->is_active,
+            404
+        );
 
-    $product->load([
-        'business',
-        'category',
+        $query = Product::query()
+            ->with([
+                'business',
+                'category',
 
-        'modifierGroups' => function ($query) {
-            $query
-                ->where('is_active', true)
-                ->orderByDesc('is_required')
-                ->orderBy('sort_order')
-                ->orderBy('id');
-        },
+                'modifierGroups' => fn ($query) => $query
+                    ->where('is_active', true)
+                    ->orderByDesc('is_required')
+                    ->orderBy('sort_order')
+                    ->orderBy('id'),
 
-        'modifierGroups.options' => function ($query) {
-            $query
-                ->where('is_active', true)
-                ->orderBy('sort_order')
-                ->orderBy('id');
-        },
-    ]);
+                'modifierGroups.options' => fn ($query) => $query
+                    ->where('is_active', true)
+                    ->orderBy('sort_order')
+                    ->orderBy('id'),
+            ])
+            ->where('business_id', $business->id)
+            ->where('is_active', true)
+            ->where('is_available', true)
+            ->orderBy('sort_order');
 
-    return response()->json([
-        'data' => [
-            'id' => (int) $product->id,
-            'business_id' => (int) $product->business_id,
-            'category_id' => (int) $product->category_id,
+        if ($request->filled('category_id')) {
+            $category = $business->categories()
+                ->findOrFail(
+                    $request->integer('category_id')
+                );
 
-            'name' => $product->name,
-            'slug' => $product->slug,
-            'sku' => $product->sku,
-            'description' => $product->description,
+            $categoryIds = [$category->id];
 
-            'price' => $product->price,
-            'sale_price' => $product->sale_price,
+            if ($category->parent_id === null) {
+                $categoryIds = array_merge(
+                    $categoryIds,
+                    $category->children()
+                        ->where('is_active', true)
+                        ->pluck('id')
+                        ->all()
+                );
+            }
 
-            'image' => $product->image,
+            $query->whereIn('category_id', $categoryIds);
+        }
 
-            'preparation_time_minutes' =>
-                $product->preparation_time_minutes,
+        $products = $query->paginate(
+            min(
+                $request->integer('per_page', 20),
+                100
+            )
+        );
 
-            'is_available' => (bool) $product->is_available,
-            'is_featured' => (bool) $product->is_featured,
-            'is_active' => (bool) $product->is_active,
+        $products->getCollection()->transform(
+            fn (Product $product) => $this->productResponse($product)
+        );
 
-            'sort_order' => (int) $product->sort_order,
-
-            'settings' => $product->settings,
-
-            'created_at' =>
-                $product->created_at?->toIso8601String(),
-
-            'updated_at' =>
-                $product->updated_at?->toIso8601String(),
-
-            'business' => $product->business,
-
-            'category' => $product->category,
-
-            'modifier_groups' => $product->modifierGroups
-                ->map(function ($group) {
-                    return [
-                        'id' => (int) $group->id,
-                        'business_id' => (int) $group->business_id,
-
-                        'name' => $group->name,
-                        'slug' => $group->slug,
-                        'description' => $group->description,
-
-                        'is_required' => (bool) $group->is_required,
-
-                        'min_selections' =>
-                            (int) $group->min_selections,
-
-                        'max_selections' =>
-                            (int) $group->max_selections,
-
-                        'is_active' =>
-                            (bool) $group->is_active,
-
-                        'sort_order' =>
-                            (int) $group->sort_order,
-
-                        'created_at' =>
-                            $group->created_at?->toIso8601String(),
-
-                        'updated_at' =>
-                            $group->updated_at?->toIso8601String(),
-
-                        'pivot' => $group->pivot
-                            ? [
-                                'product_id' =>
-                                    (int) $group->pivot->product_id,
-
-                                'modifier_group_id' =>
-                                    (int) $group->pivot->modifier_group_id,
-
-                                'sort_order' =>
-                                    (int) ($group->pivot->sort_order ?? 0),
-                            ]
-                            : null,
-
-                        'options' => $group->options
-                            ->map(function ($option) {
-                                return [
-                                    'id' => (int) $option->id,
-                                    'modifier_group_id' =>
-                                        (int) $option->modifier_group_id,
-
-                                    'name' => $option->name,
-                                    'slug' => $option->slug,
-
-                                    'price' => $option->price,
-
-                                    'is_default' =>
-                                        (bool) $option->is_default,
-
-                                    'is_active' =>
-                                        (bool) $option->is_active,
-
-                                    'sort_order' =>
-                                        (int) $option->sort_order,
-
-                                    'created_at' =>
-                                        $option->created_at
-                                            ?->toIso8601String(),
-
-                                    'updated_at' =>
-                                        $option->updated_at
-                                            ?->toIso8601String(),
-                                ];
-                            })
-                            ->values(),
-                    ];
-                })
-                ->values(),
-        ],
-    ]);
-}
+        return response()->json([
+            'data' => $products,
+        ]);
+    }
 
     /*
     |--------------------------------------------------------------------------
