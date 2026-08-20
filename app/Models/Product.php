@@ -54,15 +54,15 @@ class Product extends Model
     {
         return $this->belongsTo(Category::class);
     }
-
-    public function modifierGroups(): BelongsToMany
-    {
-        return $this->belongsToMany(
-            ModifierGroup::class,
-            'product_modifier_group'
-        )->withPivot([
-            'sort_order',
-        ]);
+public function modifierGroups()
+{
+    return $this->belongsToMany(
+        ModifierGroup::class,
+        'modifier_group_product'
+    )
+    ->withPivot('sort_order')
+    ->orderBy('pivot_sort_order');
+}
     }
     public function cartItems(): HasMany
     {
